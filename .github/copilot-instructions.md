@@ -9,6 +9,7 @@ Purpose: small Node.js scripts to analyze a Portuguese word list (`words-ptbr.tx
   - Synchronous file I/O is used for simplicity in CLI scripts.
   - Unicode normalization to A–Z via `String.normalize('NFD')` and diacritic stripping when computing frequencies.
   - Grids are `Array(N)` of `Array(N)` with cells as `null` or uppercase letters. Word placements are arrays of `[row, col]` coordinates in 8 directions.
+  - Matriz “boggle” é representada como array achatado com `size*size` letras (p. ex., 4×4 => 16 letras), cada célula é sorteada de um conjunto de 12 letras mais frequentes.
 
 ## Key files
 - `script-calc-freq.js` — computes letter frequencies A–Z from `words-ptbr.txt`.
@@ -21,6 +22,10 @@ Purpose: small Node.js scripts to analyze a Portuguese word list (`words-ptbr.tx
   - Export: `findBestPlacement(words, N=4, { maxTimeMs=5000, maxAttempts=1e6, verbose=false })`.
   - Returns `{ grid, insertedWords, stats: { count, attempts, timeMs, cutoffReached } }`.
   - When run directly, loads all words and attempts a placement, then prints the grid and statistics.
+- `matrix.js` — geração de matrizes NxN com letras sorteadas das 12 mais frequentes (`letter-freq.js`).
+  - Exports: `sortedLetters`, `getTopLetters12()`, `createMatrixBoggle(size=4, letters?)`, `generateMatrices(count=1, size=4, letters?)`.
+  - CLI: `--count N`, `--size S`, `--save`, `--out caminho`, `--print`.
+  - Persistência incremental por tamanho: sem `--out`, salva em `matrix{S}x{S}.js` (ex.: `matrix4x4.js`, `matrix5x5.js`). Cada arquivo é um acumulador que exporta `MATRICES` e recebe entradas como `MATRICES['matrix{S}x{S}-{k}'] = ['A', ...];`.
 
 ## How to run (Windows cmd)
 - Compute and print frequencies:
@@ -29,11 +34,17 @@ Purpose: small Node.js scripts to analyze a Portuguese word list (`words-ptbr.tx
   - `node script-calc-freq.js --save`
 - Run brute‑force placer with defaults (N=4):
   - `node wordgrid-bruteforce.js`
+- Generate and append matrices (examples):
+  - Print 2 matrices 4×4 (sem salvar): `node matrix.js --count 2 --size 4 --print`
+  - Salvar 4 matrizes 5×5 em `matrix5x5.js`: `node matrix.js --count 4 --size 5 --save`
+  - Salvar 97 matrizes 4×4 em `matrix4x4.js` (silencioso): `node matrix.js --count 97 --size 4 --save`
+  - Salvar em arquivo customizado: `node matrix.js --count 3 --size 5 --save --out matrix.custom.js`
 
 ## Usage examples in code
 - Frequencies: `const { calcularFrequenciaLetras } = require('./script-calc-freq'); const f = calcularFrequenciaLetras('words-ptbr.txt');`
 - Draw words: `const { drawRandomWords } = require('./script'); const words = drawRandomWords();`
 - Place words: `const { findBestPlacement } = require('./wordgrid-bruteforce'); const res = findBestPlacement(words, 4, { maxTimeMs: 10000 });`
+- Generate matrices: `const { generateMatrices } = require('./matrix'); const { matrices } = generateMatrices(3, 5);`
 
 ## Project‑specific notes and gotchas
 - `letter-freq.js` is generated; keep header/timestamp and values by rerunning the generator instead of manual edits.
@@ -41,9 +52,12 @@ Purpose: small Node.js scripts to analyze a Portuguese word list (`words-ptbr.tx
 - Heuristic `canFit` is simplistic; you may improve pruning, but avoid changing `findBestPlacement`’s signature.
 - Large inputs: scripts read entire files synchronously; if you stream/optimize, preserve output shape and side effects.
 - All coordinates and indices are 0‑based; grid cells use uppercase letters; null represents empty.
+ - `matrix.js` usa aleatoriedade melhor com `crypto.randomInt` (fallback para `Math.random`). Os arquivos por tamanho mantêm um objeto acumulador `MATRICES`; nunca sobrescrever, apenas anexar.
+ - Convenção de nomes: `matrix{S}x{S}-{k}` (ex.: `matrix5x5-12`). O próximo índice é detectado lendo o arquivo.
 
 ## Integration hints
 - `letter-freq.js` can be used to order candidate words (e.g., rarer letters first) to improve packing; not currently applied.
 - `script.js` + `wordgrid-bruteforce.js` combine to “sample then place” workflows.
+ - `matrix.js` + `letter-freq.js` permitem pipelines de geração/treino (datasets de matrizes) com controle de tamanho e quantidade.
 
 If anything here seems off or incomplete (e.g., desired CLI flags, target Node version, or logging behavior), tell me what to clarify and I’ll update this file.
