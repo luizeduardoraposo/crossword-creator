@@ -223,6 +223,8 @@ function parseArgs(argv) {
         args.out = n(); i++; break;
       case '--skip-existing':
         args.skipExisting = true; break;
+      case '--overwrite':
+        args.overwrite = true; break;
       case '--verbose':
       case '-v':
         args.verbose = true; break;
@@ -251,6 +253,7 @@ Options:
   --save|--save-solutions    Salva as soluções em um arquivo .js acumulador (formato MATRICES['id'] = { ... }).
   --out CAMINHO              Caminho do arquivo de saída (padrão: <arquivo-matrizes>-solutions.js no mesmo diretório).
   --skip-existing            Não sobrescreve entradas já existentes no arquivo de saída (pula IDs já presentes).
+  --overwrite               Sobrescreve o arquivo de saída (recria do zero). Use com --all para re-gerar tudo.
 	--verbose|-v               Imprime a grade e estatísticas.
 	--help|-h                  Mostra esta ajuda.
 
@@ -259,6 +262,7 @@ Exemplos:
 	node solve-boggle.js --file matrix5x5.js --all --minLen 4
 	node solve-boggle.js --file caminho/custom.js --words words-ptbr.txt
 	node solve-boggle.js --file matrix4x4.js --count 3 --save --out matrix4x4-solutions.js
+  node solve-boggle.js --file matrix4x4.js --all --save --overwrite   # reescreve o arquivo de soluções do zero
 `);
 }
 
@@ -272,9 +276,9 @@ function defaultSolutionsOutPath(matricesFile) {
   return path.join(dir, `${base}-solutions.js`);
 }
 
-function ensureSolutionsHeader(outPath) {
+function ensureSolutionsHeader(outPath, { overwrite = false } = {}) {
   const exists = fs.existsSync(outPath);
-  if (!exists) {
+  if (!exists || overwrite) {
     const header = [
       '// Arquivo gerado automaticamente por solve-boggle.js (soluções)',
       `// Data: ${new Date().toISOString()}`,
@@ -285,7 +289,7 @@ function ensureSolutionsHeader(outPath) {
     fs.writeFileSync(outPath, header, 'utf8');
     return;
   }
-  // If exists, do nothing (acumulador). Assumimos formato compatível.
+  // If exists and not overwriting, keep as acumulador.
 }
 
 function fileHasEntry(outPath, id) {
@@ -337,11 +341,11 @@ if (require.main === module) {
   // Persist solutions if requested
   if (args.saveSolutions) {
     const outPath = args.out ? (path.isAbsolute(args.out) ? args.out : path.join(__dirname, args.out)) : defaultSolutionsOutPath(file);
-    ensureSolutionsHeader(outPath);
+    ensureSolutionsHeader(outPath, { overwrite: !!args.overwrite });
     let wrote = 0;
     for (const r of results) {
       const id = r.id;
-      if (args.skipExisting && fileHasEntry(outPath, id)) continue;
+      if (!args.overwrite && args.skipExisting && fileHasEntry(outPath, id)) continue;
       appendSolution(outPath, id, { count: r.count, words: r.words });
       wrote++;
     }
