@@ -60,10 +60,10 @@ function calcularFrequenciaLetras(filePath) {
  * Salva o resultado em um arquivo .js como um objeto com valores no formato "count, XX.XX%".
  * O objeto mantém a mesma ordem da saída no console.
  * @param {string} inputFile caminho para words-ptbr.txt
- * @param {string} [outputFile] caminho para o arquivo de saída .js (padrão: letter-frequencies.js no mesmo diretório)
+ * @param {string} [outputFile] caminho para o arquivo de saída .js (padrão: letter-freq.js no mesmo diretório)
  * @returns {string} caminho do arquivo gerado
  */
-function salvarResultadoComoObjetoJS(inputFile, outputFile = path.join(__dirname, 'letter-frequencies.js')) {
+function salvarResultadoComoObjetoJS(inputFile, outputFile = path.join(__dirname, 'letter-freq.js')) {
 	const frequencias = calcularFrequenciaLetras(inputFile);
 
 	// Constrói objeto de saída no formato pedido: { A: "359503, 14.74%", ... }
