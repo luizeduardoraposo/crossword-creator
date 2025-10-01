@@ -328,15 +328,15 @@ if (require.main === module) {
   const results = solveBoggleMatrices(matrices, dict, { minLen, limit, verbose: !!args.verbose });
   const elapsed = Date.now() - started;
 
-  // Summary
-  let totalWords = 0;
-  for (const r of results) totalWords += r.count;
-  console.log(`\nResolvido ${results.length} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
-
-  // Print compact results per matrix (below the summary)
+  // Print compact results per matrix
   for (const r of results) {
     console.log(`\n[${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
   }
+
+  // Summary at the end
+  let totalWords = 0;
+  for (const r of results) totalWords += r.count;
+  console.log(`\nResolvido ${results.length} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
 
   // Persist solutions if requested
   if (args.saveSolutions) {
