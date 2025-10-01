@@ -329,7 +329,7 @@ if (require.main === module) {
   for (const r of results) totalWords += r.count;
   console.log(`\nResolvido ${results.length} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
 
-  // Print compact results per matrix
+  // Print compact results per matrix (below the summary)
   for (const r of results) {
     console.log(`\n[${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
   }
@@ -342,7 +342,7 @@ if (require.main === module) {
     for (const r of results) {
       const id = r.id;
       if (args.skipExisting && fileHasEntry(outPath, id)) continue;
-      appendSolution(outPath, id, { size: r.size, count: r.count, words: r.words });
+      appendSolution(outPath, id, { count: r.count, words: r.words });
       wrote++;
     }
     console.log(`\nSoluções salvas em: ${outPath} (${wrote} entrad${wrote === 1 ? 'a' : 'as'} adicionad${wrote === 1 ? 'a' : 'as'})`);
