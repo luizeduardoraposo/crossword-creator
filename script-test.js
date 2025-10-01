@@ -56,6 +56,32 @@ function calcularFrequenciaLetras(filePath) {
 	return orderedObject;
 }
 
+/**
+ * Salva o resultado em um arquivo .js como um objeto com valores no formato "count, XX.XX%".
+ * O objeto mantém a mesma ordem da saída no console.
+ * @param {string} inputFile caminho para words-ptbr.txt
+ * @param {string} [outputFile] caminho para o arquivo de saída .js (padrão: letter-frequencies.js no mesmo diretório)
+ * @returns {string} caminho do arquivo gerado
+ */
+function salvarResultadoComoObjetoJS(inputFile, outputFile = path.join(__dirname, 'letter-frequencies.js')) {
+	const frequencias = calcularFrequenciaLetras(inputFile);
+
+	// Constrói objeto de saída no formato pedido: { A: "359503, 14.74%", ... }
+	const entries = [];
+	for (const letra of Object.keys(frequencias)) {
+		const { count, percent } = frequencias[letra];
+		entries.push(`  ${letra}: "${count}, ${percent.toFixed(2)}%"`);
+	}
+
+	const header = `// Arquivo gerado automaticamente por script-test.js\n` +
+		`// Data: ${new Date().toISOString()}\n`;
+	const body = `const LETTER_FREQUENCIES = {\n${entries.join(',\n')}\n};\n\n` +
+		`module.exports = LETTER_FREQUENCIES;\n`;
+
+	fs.writeFileSync(outputFile, header + body, 'utf8');
+	return outputFile;
+}
+
 // Executa quando rodado diretamente: calcula e imprime um resumo
 if (require.main === module) {
 	try {
@@ -71,6 +97,13 @@ if (require.main === module) {
 			const { count, percent } = frequencias[letra];
 			console.log(`${letra}: ${count}, ${percent.toFixed(2)}%`);
 		}
+
+		// Se for passado --save ou --salvar, grava o arquivo JS
+		const args = process.argv.slice(2);
+		if (args.includes('--save') || args.includes('--salvar')) {
+			const outPath = salvarResultadoComoObjetoJS(filePath);
+			console.log('Arquivo salvo em:', outPath);
+		}
 	} catch (err) {
 		console.error('Erro ao calcular frequências:', err);
 		process.exit(1);
@@ -78,5 +111,5 @@ if (require.main === module) {
 }
 
 // Exporta para uso em outros scripts, se necessário
-module.exports = { calcularFrequenciaLetras };
+module.exports = { calcularFrequenciaLetras, salvarResultadoComoObjetoJS };
 
