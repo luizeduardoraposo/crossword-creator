@@ -1,5 +1,5 @@
-// Arquivo gerado automaticamente por script-test.js
-// Data: 2025-10-01T04:23:08.032Z
+// Arquivo gerado automaticamente por script-calc-freq.js
+// Data: 2025-10-01T04:28:21.487Z
 const LETTER_FREQUENCIES = {
   A: "359503, 14.74%",
   E: "288067, 11.81%",
