@@ -225,6 +225,8 @@ function parseArgs(argv) {
         args.skipExisting = true; break;
       case '--overwrite':
         args.overwrite = true; break;
+      case '--stream':
+        args.stream = true; break;
       case '--verbose':
       case '-v':
         args.verbose = true; break;
@@ -254,6 +256,7 @@ Options:
   --out CAMINHO              Caminho do arquivo de saída (padrão: <arquivo-matrizes>-solutions.js no mesmo diretório).
   --skip-existing            Não sobrescreve entradas já existentes no arquivo de saída (pula IDs já presentes).
   --overwrite               Sobrescreve o arquivo de saída (recria do zero). Use com --all para re-gerar tudo.
+  --stream                  Modo incremental: imprime e (se habilitado) salva cada matriz assim que for resolvida.
 	--verbose|-v               Imprime a grade e estatísticas.
 	--help|-h                  Mostra esta ajuda.
 
@@ -263,6 +266,7 @@ Exemplos:
 	node solve-boggle.js --file caminho/custom.js --words words-ptbr.txt
 	node solve-boggle.js --file matrix4x4.js --count 3 --save --out matrix4x4-solutions.js
   node solve-boggle.js --file matrix4x4.js --all --save --overwrite   # reescreve o arquivo de soluções do zero
+  node solve-boggle.js --file matrix4x4.js --count 10 --stream --save  # resolve e grava incrementalmente
 `);
 }
 
@@ -325,31 +329,65 @@ if (require.main === module) {
   const started = Date.now();
   const dict = loadDictionary(dictPath, { minLen });
   const matrices = loadMatricesFromFile(file);
-  const results = solveBoggleMatrices(matrices, dict, { minLen, limit, verbose: !!args.verbose });
-  const elapsed = Date.now() - started;
-
-  // Print compact results per matrix
-  for (const r of results) {
-    console.log(`\n[${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
-  }
-
-  // Summary at the end
-  let totalWords = 0;
-  for (const r of results) totalWords += r.count;
-  console.log(`\nResolvido ${results.length} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
-
-  // Persist solutions if requested
-  if (args.saveSolutions) {
-    const outPath = args.out ? (path.isAbsolute(args.out) ? args.out : path.join(__dirname, args.out)) : defaultSolutionsOutPath(file);
-    ensureSolutionsHeader(outPath, { overwrite: !!args.overwrite });
+  if (args.stream) {
+    // Streaming mode: process sequentially
+    const max = Math.min(matrices.length, isFinite(limit) ? limit : matrices.length);
+    let totalWords = 0;
+    let processed = 0;
     let wrote = 0;
-    for (const r of results) {
-      const id = r.id;
-      if (!args.overwrite && args.skipExisting && fileHasEntry(outPath, id)) continue;
-      appendSolution(outPath, id, { count: r.count, words: r.words });
-      wrote++;
+    let outPath;
+    if (args.saveSolutions) {
+      outPath = args.out ? (path.isAbsolute(args.out) ? args.out : path.join(__dirname, args.out)) : defaultSolutionsOutPath(file);
+      ensureSolutionsHeader(outPath, { overwrite: !!args.overwrite });
     }
-    console.log(`\nSoluções salvas em: ${outPath} (${wrote} entrad${wrote === 1 ? 'a' : 'as'} adicionad${wrote === 1 ? 'a' : 'as'})`);
+    for (let i = 0; i < max; i++) {
+      const { id, grid } = matrices[i];
+      const res = solveBoggleGrid(grid, dict, { minLen });
+      console.log(`\n[${id}] ${res.size}x${res.size} -> ${res.count} palavra(s)`);
+      totalWords += res.count;
+      processed++;
+      if (args.saveSolutions) {
+        if (!args.overwrite && args.skipExisting && fileHasEntry(outPath, id)) {
+          // skip existing
+        } else {
+          appendSolution(outPath, id, { count: res.count, words: res.words });
+          wrote++;
+        }
+      }
+    }
+    const elapsed = Date.now() - started;
+    console.log(`\nResolvido ${processed} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
+    if (args.saveSolutions) {
+      console.log(`\nSoluções salvas em: ${outPath} (${wrote} entrad${wrote === 1 ? 'a' : 'as'} adicionad${wrote === 1 ? 'a' : 'as'})`);
+    }
+  } else {
+    // Batch mode: process all, then print and save
+    const results = solveBoggleMatrices(matrices, dict, { minLen, limit, verbose: !!args.verbose });
+    const elapsed = Date.now() - started;
+
+    // Print compact results per matrix
+    for (const r of results) {
+      console.log(`\n[${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
+    }
+
+    // Summary at the end
+    let totalWords = 0;
+    for (const r of results) totalWords += r.count;
+    console.log(`\nResolvido ${results.length} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
+
+    // Persist solutions if requested
+    if (args.saveSolutions) {
+      const outPath = args.out ? (path.isAbsolute(args.out) ? args.out : path.join(__dirname, args.out)) : defaultSolutionsOutPath(file);
+      ensureSolutionsHeader(outPath, { overwrite: !!args.overwrite });
+      let wrote = 0;
+      for (const r of results) {
+        const id = r.id;
+        if (!args.overwrite && args.skipExisting && fileHasEntry(outPath, id)) continue;
+        appendSolution(outPath, id, { count: r.count, words: r.words });
+        wrote++;
+      }
+      console.log(`\nSoluções salvas em: ${outPath} (${wrote} entrad${wrote === 1 ? 'a' : 'as'} adicionad${wrote === 1 ? 'a' : 'as'})`);
+    }
   }
 }
 
