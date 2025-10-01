@@ -4,7 +4,8 @@
 //   const result = generateMatrices(3); // { matrix1: [...], matrix2: [...], matrix3: [...], matrices: [[...], ...] }
 // CLI (Windows cmd):
 //   node matrix.js --count 4 --size 4 --print
-//   node matrix.js --count 4 --size 5 --save --out matrix.output.js
+//   node matrix.js --count 4 --size 5 --save            # salva em matrix5x5.js
+//   node matrix.js --count 4 --size 5 --save --out matrix.custom.js
 
 const fs = require('fs');
 const path = require('path');
@@ -130,7 +131,9 @@ if (require.main === module) {
 
   const count = parseInt(getArg('count', '1'), 10) || 1;
   const size = Math.max(2, parseInt(getArg('size', '4'), 10) || 4);
-  const outPath = getArg('out', path.join(__dirname, 'matrix.generated.js'));
+  // Roteamento automático por tamanho: se não houver --out, usa matrix{S}x{S}.js
+  const defaultOut = path.join(__dirname, `matrix${size}x${size}.js`);
+  const outPath = getArg('out', defaultOut);
   const shouldSave = args.includes('--save');
   const shouldPrint = args.includes('--print') || !shouldSave;
 
