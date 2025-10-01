@@ -299,7 +299,7 @@ function fileHasEntry(outPath, id) {
 }
 
 function appendSolution(outPath, id, solution) {
-  const line = `MATRICES['${id}'] = { count: ${solution.count}, words: ${JSON.stringify(solution.words)} };\n`;
+  const line = `MATRICES['${id}'] = { count: ${solution.count}, words: ${JSON.stringify(solution.words)} };\n\n`;
   fs.appendFileSync(outPath, line, 'utf8');
 }
 
