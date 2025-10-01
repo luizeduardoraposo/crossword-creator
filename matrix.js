@@ -3,8 +3,8 @@
 //   const { sortedLetters, createMatrixBoggle, generateMatrices } = require('./matrix');
 //   const result = generateMatrices(3); // { matrix1: [...], matrix2: [...], matrix3: [...], matrices: [[...], ...] }
 // CLI (Windows cmd):
-//   node matrix.js --count 4 --print
-//   node matrix.js --count 4 --save --out matrix.output.js
+//   node matrix.js --count 4 --size 4 --print
+//   node matrix.js --count 4 --size 5 --save --out matrix.output.js
 
 const fs = require('fs');
 const path = require('path');
@@ -105,12 +105,13 @@ if (require.main === module) {
   };
 
   const count = parseInt(getArg('count', '1'), 10) || 1;
+  const size = Math.max(2, parseInt(getArg('size', '4'), 10) || 4);
   const outPath = getArg('out', path.join(__dirname, 'matrix.generated.js'));
   const shouldSave = args.includes('--save');
   const shouldPrint = args.includes('--print') || !shouldSave;
 
   const { generateMatrices } = module.exports;
-  const generated = generateMatrices(count);
+  const generated = generateMatrices(count, size);
 
   if (shouldPrint) {
     // Imprime em formato JS para fácil cópia
