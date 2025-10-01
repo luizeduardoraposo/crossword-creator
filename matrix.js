@@ -54,31 +54,55 @@ function generateMatrices(count = 1, size = 4, letters = sortedLetters) {
   return result;
 }
 
-// 5) Helper para serializar como arquivo JS no formato solicitado: matrix1 = [A, B, C, ...];
-// Para ser um JS válido, as letras são escritas como strings: 'A', 'B', ...
-function serializeMatricesJS(obj, headerComment = true) {
+// 5) Persistência incremental: arquivo acumulador com um único objeto MATRICES
+// - Nomes: MATRICES['matrix{S}x{S}-{k}'] = ['A',...]; (permite hífen via chave string)
+// - Se o arquivo não existir, cria com cabeçalho e module.exports = MATRICES
+// - Se existir, apenas anexa novas entradas
+
+function getNextIndexForSize(filePath, size) {
+  if (!fs.existsSync(filePath)) return 1;
+  const content = fs.readFileSync(filePath, 'utf8');
+  const prefix = `MATRICES['matrix${size}x${size}-`;
+  let max = 0;
+  let pos = 0;
+  while (true) {
+    const i = content.indexOf(prefix, pos);
+    if (i === -1) break;
+    const start = i + prefix.length;
+    let j = start;
+    while (j < content.length && content[j] >= '0' && content[j] <= '9') j++;
+    const numStr = content.slice(start, j);
+    const num = parseInt(numStr, 10);
+    if (!Number.isNaN(num) && num > max) max = num;
+    pos = j;
+  }
+  return max + 1;
+}
+
+function ensureMatricesFile(filePath) {
+  if (fs.existsSync(filePath)) return;
+  const header = [
+    '// Arquivo gerado automaticamente por matrix.js (acumulador)',
+    `// Data: ${new Date().toISOString()}`,
+    'const MATRICES = {};',
+    'module.exports = MATRICES;',
+    ''
+  ].join('\n');
+  fs.writeFileSync(filePath, header, 'utf8');
+}
+
+function appendMatricesToFile(filePath, size, matrices) {
+  ensureMatricesFile(filePath);
+  const startIdx = getNextIndexForSize(filePath, size);
   const lines = [];
-  if (headerComment) {
-    lines.push('// Arquivo gerado automaticamente por matrix.js');
-    lines.push(`// Data: ${new Date().toISOString()}`);
-  }
-  const keys = Object.keys(obj).filter(k => /^matrix\d+$/.test(k)).sort((a, b) => {
-    const na = parseInt(a.replace('matrix', ''), 10);
-    const nb = parseInt(b.replace('matrix', ''), 10);
-    return na - nb;
-  });
-  for (const k of keys) {
-    const arr = obj[k].map(ch => `'${ch}'`).join(', ');
-    lines.push(`const ${k} = [${arr}];`);
-  }
-  if (keys.length) {
-    lines.push('');
-    lines.push(`module.exports = { ${keys.join(', ')}, matrices: [${keys.join(', ')}] };`);
-  } else {
-    lines.push('module.exports = { matrices: [] };');
+  for (let i = 0; i < matrices.length; i++) {
+    const arr = matrices[i].map(ch => `'${ch}'`).join(', ');
+    const name = `matrix${size}x${size}-${startIdx + i}`;
+    lines.push(`MATRICES['${name}'] = [${arr}];`);
   }
   lines.push('');
-  return lines.join('\n');
+  fs.appendFileSync(filePath, lines.join('\n'), 'utf8');
+  return startIdx; // para impressão coerente
 }
 
 // Exports de uso em código
@@ -87,7 +111,7 @@ module.exports = {
   getTopLetters12,
   createMatrixBoggle,
   generateMatrices,
-  serializeMatricesJS
+  serializeMatricesJS: undefined // legado (removido na persistência incremental)
 };
 
 // 6) CLI: permite escolher quantas vezes executar e opcionalmente salvar em arquivo
@@ -113,15 +137,22 @@ if (require.main === module) {
   const { generateMatrices } = module.exports;
   const generated = generateMatrices(count, size);
 
-  if (shouldPrint) {
-    // Imprime em formato JS para fácil cópia
-    const txt = serializeMatricesJS(generated);
-    console.log(txt);
-  }
-
   if (shouldSave) {
-    const txt = serializeMatricesJS(generated);
-    fs.writeFileSync(outPath, txt, 'utf8');
-    console.log('Matrizes salvas em:', outPath);
+    const startIdx = appendMatricesToFile(outPath, size, generated.matrices);
+    console.log(`Matrizes ${size}x${size} adicionadas em:`, outPath);
+    if (shouldPrint) {
+      for (let i = 0; i < generated.matrices.length; i++) {
+        const name = `matrix${size}x${size}-${startIdx + i}`;
+        const arr = generated.matrices[i].map(ch => `'${ch}'`).join(', ');
+        console.log(`MATRICES['${name}'] = [${arr}];`);
+      }
+    }
+  } else if (shouldPrint) {
+    // Impressão sem salvar: ainda respeita a convenção dos nomes com size
+    for (let i = 0; i < generated.matrices.length; i++) {
+      const name = `matrix${size}x${size}-${i + 1}`; // numeração local (não lê arquivo)
+      const arr = generated.matrices[i].map(ch => `'${ch}'`).join(', ');
+      console.log(`MATRICES['${name}'] = [${arr}];`);
+    }
   }
 }
