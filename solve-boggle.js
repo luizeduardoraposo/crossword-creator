@@ -160,11 +160,6 @@ function solveBoggleMatrices(matricesInput, dict, { minLen = 3, limit = Infinity
   for (let i = 0; i < max; i++) {
     const { id, grid } = items[i];
     const res = solveBoggleGrid(grid, dict, { minLen });
-    if (verbose) {
-      console.log(`\n=== Matrix ${id} (${res.size}x${res.size}) ===`);
-      console.log(printGrid(res.grid));
-      console.log(`Found ${res.count} words`);
-    }
     results.push({ id, ...res });
   }
   return results;
@@ -300,7 +295,7 @@ function fileHasEntry(outPath, id) {
 }
 
 function appendSolution(outPath, id, solution) {
-  const line = `MATRICES['${id}'] = { size: ${solution.size}, count: ${solution.count}, words: ${JSON.stringify(solution.words)} };\n`;
+  const line = `MATRICES['${id}'] = { count: ${solution.count}, words: ${JSON.stringify(solution.words)} };\n`;
   fs.appendFileSync(outPath, line, 'utf8');
 }
 
