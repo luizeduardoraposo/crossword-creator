@@ -221,6 +221,13 @@ function parseArgs(argv) {
         args.minLen = parseInt(n(), 10); i++; break;
       case '--words':
         args.words = n(); i++; break;
+      case '--save':
+      case '--save-solutions':
+        args.saveSolutions = true; break;
+      case '--out':
+        args.out = n(); i++; break;
+      case '--skip-existing':
+        args.skipExisting = true; break;
       case '--verbose':
       case '-v':
         args.verbose = true; break;
@@ -246,6 +253,9 @@ Options:
 	--all                      Resolver todas as matrizes do arquivo.
 	--minLen N                 Tamanho mínimo da palavra (padrão: 3).
 	--words CAMINHO            Dicionário (padrão: words-ptbr.txt).
+  --save|--save-solutions    Salva as soluções em um arquivo .js acumulador (formato MATRICES['id'] = { ... }).
+  --out CAMINHO              Caminho do arquivo de saída (padrão: <arquivo-matrizes>-solutions.js no mesmo diretório).
+  --skip-existing            Não sobrescreve entradas já existentes no arquivo de saída (pula IDs já presentes).
 	--verbose|-v               Imprime a grade e estatísticas.
 	--help|-h                  Mostra esta ajuda.
 
@@ -253,7 +263,45 @@ Exemplos:
 	node solve-boggle.js --file matrix4x4.js --count 2 -v
 	node solve-boggle.js --file matrix5x5.js --all --minLen 4
 	node solve-boggle.js --file caminho/custom.js --words words-ptbr.txt
+	node solve-boggle.js --file matrix4x4.js --count 3 --save --out matrix4x4-solutions.js
 `);
+}
+
+// ----------------------------------------
+// Persistência das soluções como arquivo acumulador JS
+// ----------------------------------------
+
+function defaultSolutionsOutPath(matricesFile) {
+  const dir = path.dirname(path.isAbsolute(matricesFile) ? matricesFile : path.join(__dirname, matricesFile));
+  const base = path.basename(matricesFile, path.extname(matricesFile));
+  return path.join(dir, `${base}-solutions.js`);
+}
+
+function ensureSolutionsHeader(outPath) {
+  const exists = fs.existsSync(outPath);
+  if (!exists) {
+    const header = [
+      '// Arquivo gerado automaticamente por solve-boggle.js (soluções)',
+      `// Data: ${new Date().toISOString()}`,
+      'const MATRICES = {};',
+      'module.exports = MATRICES;',
+      '',
+    ].join('\n');
+    fs.writeFileSync(outPath, header, 'utf8');
+    return;
+  }
+  // If exists, do nothing (acumulador). Assumimos formato compatível.
+}
+
+function fileHasEntry(outPath, id) {
+  if (!fs.existsSync(outPath)) return false;
+  const txt = fs.readFileSync(outPath, 'utf8');
+  return txt.includes(`MATRICES['${id}']`) || txt.includes(`MATRICES["${id}"]`);
+}
+
+function appendSolution(outPath, id, solution) {
+  const line = `MATRICES['${id}'] = { size: ${solution.size}, count: ${solution.count}, words: ${JSON.stringify(solution.words)} };\n`;
+  fs.appendFileSync(outPath, line, 'utf8');
 }
 
 if (require.main === module) {
@@ -289,6 +337,20 @@ if (require.main === module) {
   // Print compact results per matrix
   for (const r of results) {
     console.log(`\n[${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
+  }
+
+  // Persist solutions if requested
+  if (args.saveSolutions) {
+    const outPath = args.out ? (path.isAbsolute(args.out) ? args.out : path.join(__dirname, args.out)) : defaultSolutionsOutPath(file);
+    ensureSolutionsHeader(outPath);
+    let wrote = 0;
+    for (const r of results) {
+      const id = r.id;
+      if (args.skipExisting && fileHasEntry(outPath, id)) continue;
+      appendSolution(outPath, id, { size: r.size, count: r.count, words: r.words });
+      wrote++;
+    }
+    console.log(`\nSoluções salvas em: ${outPath} (${wrote} entrad${wrote === 1 ? 'a' : 'as'} adicionad${wrote === 1 ? 'a' : 'as'})`);
   }
 }
 
