@@ -227,6 +227,8 @@ function parseArgs(argv) {
         args.overwrite = true; break;
       case '--stream':
         args.stream = true; break;
+      case '--no-stream':
+        args.noStream = true; break;
       case '--verbose':
       case '-v':
         args.verbose = true; break;
@@ -255,8 +257,9 @@ Options:
   --save|--save-solutions    Salva as soluções em um arquivo .js acumulador (formato MATRICES['id'] = { ... }).
   --out CAMINHO              Caminho do arquivo de saída (padrão: <arquivo-matrizes>-solutions.js no mesmo diretório).
   --skip-existing            Não sobrescreve entradas já existentes no arquivo de saída (pula IDs já presentes).
-  --overwrite               Sobrescreve o arquivo de saída (recria do zero). Use com --all para re-gerar tudo.
-  --stream                  Modo incremental: imprime e (se habilitado) salva cada matriz assim que for resolvida.
+  --overwrite                Sobrescreve o arquivo de saída (recria do zero). Use com --all para re-gerar tudo.
+  --stream                   Modo incremental (padrão). Imprime e (se habilitado) salva cada matriz assim que for resolvida.
+  --no-stream                Desativa o modo incremental e acumula o output para o final.
 	--verbose|-v               Imprime a grade e estatísticas.
 	--help|-h                  Mostra esta ajuda.
 
@@ -329,6 +332,9 @@ if (require.main === module) {
   const started = Date.now();
   const dict = loadDictionary(dictPath, { minLen });
   const matrices = loadMatricesFromFile(file);
+  // Streaming é padrão, a menos que --no-stream seja especificado
+  if (args.noStream) args.stream = false; else if (typeof args.stream === 'undefined') args.stream = true;
+
   if (args.stream) {
     // Streaming mode: process sequentially
     const max = Math.min(matrices.length, isFinite(limit) ? limit : matrices.length);
@@ -340,10 +346,22 @@ if (require.main === module) {
       outPath = args.out ? (path.isAbsolute(args.out) ? args.out : path.join(__dirname, args.out)) : defaultSolutionsOutPath(file);
       ensureSolutionsHeader(outPath, { overwrite: !!args.overwrite });
     }
+
+    // Ctrl+C: imprime um resumo e mantém o que já foi gravado
+    const onSigint = () => {
+      const elapsed = Date.now() - started;
+      console.log(`\n\nInterrompido por Ctrl+C. Progresso: ${processed}/${max} matriz(es) | Palavras totais: ${totalWords} | Tempo: ${elapsed} ms`);
+      if (args.saveSolutions) {
+        console.log(`Soluções parciais salvas em: ${outPath} (${wrote} entrad${wrote === 1 ? 'a' : 'as'} adicionad${wrote === 1 ? 'a' : 'as'})`);
+      }
+      process.exit(130);
+    };
+    process.once('SIGINT', onSigint);
+
     for (let i = 0; i < max; i++) {
       const { id, grid } = matrices[i];
       const res = solveBoggleGrid(grid, dict, { minLen });
-      console.log(`\n[${id}] ${res.size}x${res.size} -> ${res.count} palavra(s)`);
+      console.log(`\n[${i + 1}/${max}] [${id}] ${res.size}x${res.size} -> ${res.count} palavra(s)`);
       totalWords += res.count;
       processed++;
       if (args.saveSolutions) {
@@ -355,6 +373,7 @@ if (require.main === module) {
         }
       }
     }
+    process.removeListener('SIGINT', onSigint);
     const elapsed = Date.now() - started;
     console.log(`\nResolvido ${processed} matriz(es) em ${elapsed} ms | Palavras totais: ${totalWords}`);
     if (args.saveSolutions) {
@@ -366,8 +385,9 @@ if (require.main === module) {
     const elapsed = Date.now() - started;
 
     // Print compact results per matrix
-    for (const r of results) {
-      console.log(`\n[${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      console.log(`\n[${i + 1}/${results.length}] [${r.id}] ${r.size}x${r.size} -> ${r.count} palavra(s)`);
     }
 
     // Summary at the end
