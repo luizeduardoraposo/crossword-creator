@@ -1,3 +1,8 @@
 matrix4x4.js filter=lfs diff=lfs merge=lfs -text
 matrix4x4-solutions.js filter=lfs diff=lfs merge=lfs -text
 matrix4x4-sorted-by-words.js filter=lfs diff=lfs merge=lfs -text
+.git/lfs/objects/0e/eb/0eebb156601ac89adf2851364af3870adb7b0f7ba8a9bc95559597ad2ffd0264 filter=lfs diff=lfs merge=lfs -text
+.git/lfs/objects/df/7f/df7fd619f271ac0449249b890333e8020e40e489a40d0ae9753992668a7cd415 filter=lfs diff=lfs merge=lfs -text
+.git/lfs/objects/fa/4c/fa4c8f19dab8f6b450b8936008999e80732132044a18170971a570f51e63e119 filter=lfs diff=lfs merge=lfs -text
+.git/objects/af/7fea232299963c3ee8effcf6533ee7e36a9028 filter=lfs diff=lfs merge=lfs -text
+4x4-solve.json filter=lfs diff=lfs merge=lfs -text
